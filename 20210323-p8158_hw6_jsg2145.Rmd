@@ -10,6 +10,7 @@ library(tidyverse)
 library(viridis)
 library(psych)
 library(lavaan)
+library(semPlot)
 knitr::opts_chunk$set(
 	echo = TRUE,
 	warning = FALSE,
@@ -45,7 +46,35 @@ df = data %>%
 ```
 
 ```{r}
+names(df)
+```
 
+
+# SEM
+
+```{r}
+model <- ' 
+  # latent variable definitions
+     outuwcb =~ diet_yr + uwcb_yr
+     bmi_sf ~ bodysat + outuwcb + wtteas
+     bmi_sf ~ wtteas
+     bodysat ~ outuwcb
+     wtteas =~ teasewt + fam_wt + bodysat + outuwcb
+     wtteas ~ outuwcb + bodysat
+'
+#      bmi_sf ~ outuwcb + bodysat + wtteas
+#      
+#      bodysat ~ outuwcb
+#      wtteas ~ teasewt + fam_wt + outuwcb + bodysat + bmi_sf
+# '
+```
+
+```{r, eval = FALSE}
+model.fit <- sem(model, data = df, sample.cov=TRUE, missing = "ML")
+```
+
+```{r, eval = FALSE}
+semPaths(model.fit)
 ```
 
 
