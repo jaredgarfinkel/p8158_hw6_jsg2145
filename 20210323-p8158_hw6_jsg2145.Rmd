@@ -52,30 +52,207 @@ names(df)
 
 # SEM
 
-```{r}
+```{r notes, include = FALSE, eval = FALSE}
 model <- ' 
   # latent variable definitions
      outuwcb =~ diet_yr + uwcb_yr
-     bmi_sf ~ bodysat + outuwcb + wtteas
-     bmi_sf ~ wtteas
-     bodysat ~ outuwcb
-     wtteas =~ teasewt + fam_wt + bodysat + outuwcb
-     wtteas ~ outuwcb + bodysat
+     wtteas =~ teasewt + fam_wt + bmi_sf
+     bodysat =~ bmi_sf
+     outuwcb ~ bodysat + wtteas
+     bodysat ~ wtteas
+     bmi_sf ~~ wtteas
 '
+
+#      wtteas ~ outuwcb + bodysat
+# '
 #      bmi_sf ~ outuwcb + bodysat + wtteas
 #      
 #      bodysat ~ outuwcb
 #      wtteas ~ teasewt + fam_wt + outuwcb + bodysat + bmi_sf
 # '
+
+model <- ' 
+     outuwcb =~ bmi_sf
+     bodysat =~ bmi_sf
+     bodysat ~ wtteas
+     wtteas =~ bmi_sf
+     outuwcb =~ bmi_sf
+     outuwcb ~ bodysat + wtteas
+     diet_yr 
+     wtteas =~ teasewt + fam_wt + bmi_sf 
+     bodysat ~ outuwcb
+     wtteas ~ outuwcb + bodysat
+     bmi_sf ~~ wtteas + bodysat + outuwcb
+'
 ```
 
-```{r, eval = FALSE}
-model.fit <- sem(model, data = df, sample.cov=TRUE, missing = "ML")
+```{r}
+model1 <- '
+  # measurement model
+    outuwcb =~ diet_yr + uwcb_yr
+    wtteas =~ teasewt + fam_wt
+
+  # correlating the exogenous variables
+    wtteas ~~ bmi_sf
+
+  # structural model - direct effects
+    outuwcb ~ a*wtteas + b*bodydiss + c*bmi_sf
+    bodydiss ~ d*bmi_sf + e*wtteas
+
+  #indirect
+    indirect_outuwcb := b * (d+e)
+    
+  #total
+    total_outuwcb := a+c+b*(d+e)
+'
 ```
 
-```{r, eval = FALSE}
+```{r}
+model.fit <- sem(model1, data = df, sample.cov=TRUE, missing = "ML")
+```
+
+```{r}
+summary(model.fit, standardized = TRUE)
+```
+
+# Part 2, Question a
+
+The standardized direct effects on outuwcb are 0.170 for wtteas, -0.031 for bodydiss and 0.015 for bmi_sf.
+
+The standardized indirect effects on outuwcb are -0.031 * -0.336  = 0.010 for bmi_sf and -0.031 * -4.986 = 0.155 for wtteas.
+
+So, the total effects on outuwcb is:
+
+0.17 + -0.031 + 0.015 + 0.010 + 0.155 = .319
+
+```{r}
 semPaths(model.fit)
 ```
 
+# Part 2, Question b
+
+```{r}
+model2 <- '
+  # measurement model
+    outuwcb =~ diet_yr + uwcb_yr
+    wtteas =~ teasewt + fam_wt
+
+  # structural model - direct effects
+    outuwcb ~ a*wtteas + b*bodydiss + c*bmi_sf
+    bodydiss ~ d*bmi_sf + e*wtteas
+
+  #indirect
+    indirect_outuwcb := b * (d+e)
+    
+  #total
+    total_outuwcb := a+c+b*(d+e)
+'
+```
+
+```{r}
+model.fit2 = sem(model2, data = df, sample.cov=TRUE, missing = "ML")
+```
+
+```{r}
+summary(model.fit2, standardized = TRUE)
+```
+
+The standardized direct effects are 0.163 for wtteas, -0.031 for bodysat and -0.020 for bmi_sf.
+
+The standardized indirect effects are -0.031 * -0.465 = 0.014 for bmi_sf and -0.031 * -4.756 = 0.147 for wtteas.
+
+So, the total effects on outuwcb are:
+
+0.163+-0.031+0.020+0.014+0.147 = .313
+
+These estimates of total effects are quite close (0.313 vs. 0.319)
+
+The fit statistics are higher than the first model (Chi-squared statistic = 253 > 17.4).
+
+```{r}
+semPaths(model.fit2)
+```
+
+# Question 2, part c
+
+```{r, include = FALSE, eval = FALSE}
+model3 <- '
+  # structural model - direct effects
+    uwcb_yr ~ a*bodydiss + b*teasewt + c*bmi_sf
+    diet_yr ~ d*bodydiss+ e*teasewt + f*bmi_sf
+    bodydiss ~ g*bmi_sf + h*teasewt
+    teasewt ~ j*bmi_sf
+    
+  # correlating the exogenous variables
+    uwcb_yr ~~ diet_yr
+    
+  # indirect effects
+    ind_uwcb_yr := j*b
+    ind_diet_yr := j*e
+    ind_bodydiss := h*j
+    
+  # total effects
+    tot_uwcbyr := c+a+j*b
+    tot_dietyr := f+d+j*e
+    tot_bodydiss := g+h*j
+
+'
+```
 
 
+```{r}
+model3 <- '
+  # structural model - direct effects
+    uwcb_yr ~ a*bodydiss + b*teasewt + c*bmi_sf
+    diet_yr ~ d*bodydiss+ e*teasewt + f*bmi_sf
+    bodydiss ~ g*bmi_sf + h*teasewt
+    teasewt ~ j*bmi_sf
+
+  # indirect effects
+    ind_uwcb_yr := a*g + a*h + b*j
+    ind_diet_yr := d*g + d*h + e*j
+
+  #total effects
+    tot_uwcbyr := b*j+c+a*(g+h)
+    tot_dietyr := e*j+f+d*(g+h)
+    
+  # correlating the exogenous variables
+    uwcb_yr ~~ diet_yr
+'
+```
+
+```{r}
+model.fit3 = lavaan::sem(model3, data = df, sample.cov=TRUE, missing = "ML")
+```
+
+```{r}
+summary(model.fit3, standardized = TRUE)
+```
+
+The direct effects for uwcb_yr are -0.055 for bodydiss, 0.107 for teaswt, and 0.024 for bmi_sf. 
+
+The indirect effects for uwcb_yr are $-0.055*-0.491 + 0.107*0.054$ = `r -0.055*-0.491 + 0.107*0.054` for bmi_sf 
+
+and, $-0.055*-2.028$ = `r -0.055*-2.028` for teasewt
+
+The total effects are therefore -0.055 + 0.107 + 0.024 + `r -0.055*-0.491 + 0.107*0.054` + `r -0.055*-2.028` = 0.221 for uwcb_yr.
+
+The direct effects for diet_yr are -0.034 for bodydiss, 0.033 for teaswt, and 0.024 for bmi_sf. 
+
+The indirect effects for diet_yr are $-0.034*-0.491 + 0.033*0.054= 0.018$ for bmi_sf 
+
+and, $-0.034*-2.028 = 0.069$ for teasewt
+
+The total effects are therefore -0.034 + 0.033 + 0.024 + 0.018 + 0.069 = .110 for diet_yr.
+
+```{r}
+semPaths(model.fit3)
+```
+
+```{r}
+fitmeasures(model.fit3, "df")
+fitmeasures(model.fit3, "chisq")
+```
+
+
+This test is different than that in part b since there are no latent variables. There are no degrees of freedom and no test statistics. It is essentially a linear regression.
